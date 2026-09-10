@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB:       forest_monitor
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL:   postgresql://postgres:password@postgres:5432/forest_monitor
+      MODEL_PATH:     /models/model.pth
+      AUDIO_DIR:      /data/audio
+      FRONTEND_ORIGIN: http://localhost:5173
+    volumes:
+      - ./models:/models:ro
+      - audiodata:/data/audio
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  worker:
+    build: ./backend
+    environment:
+      DATABASE_URL:        postgresql://postgres:password@postgres:5432/forest_monitor
+      MODEL_PATH:          /models/model.pth
+      AUDIO_DIR:           /data/audio
+      WORKER_INTERVAL_SEC: "5"
+      WORKER_BATCH_SIZE:   "5"
+    volumes:
+      - ./models:/models:ro
+      - audiodata:/data/audio
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    command: python worker.py
+
+volumes:
+  pgdata:
+  audiodata:
