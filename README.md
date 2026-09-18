@@ -1,4 +1,4 @@
-# 🌲 Forest Guardian — Acoustic Threat Detection System
+# 🌲 Forest Beacon — Acoustic Threat Detection System
 
 A full-stack IoT monitoring platform for detecting suspicious sounds in forest environments.
 ESP32 sensor nodes stream raw audio to a central server where a PyTorch model classifies
